@@ -35,9 +35,17 @@ export function normalizeClaude(data: { daily: ClaudeDaily[] }, tool: ToolName):
 	}));
 }
 
+function normalizeDate(dateStr: string): string {
+	// Handle "Feb 21, 2026" format from Codex → "2026-02-21"
+	if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+	const parsed = new Date(dateStr);
+	if (isNaN(parsed.getTime())) return dateStr;
+	return parsed.toISOString().slice(0, 10);
+}
+
 export function normalizeCodex(data: { daily: CodexDaily[] }): UsageRecord[] {
 	return (data.daily ?? []).map((d) => ({
-		date: d.date,
+		date: normalizeDate(d.date),
 		tool: 'codex' as ToolName,
 		inputTokens: d.inputTokens,
 		outputTokens: d.outputTokens,

@@ -1,14 +1,21 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import type { TimeRange, UsageResponse } from '$lib/types';
+	import type { TimeRange, ToolName, UsageResponse } from '$lib/types';
 	import SummaryCards from '$lib/components/SummaryCards.svelte';
 	import TimeRangeToggle from '$lib/components/TimeRangeToggle.svelte';
 	import DateRangePicker from '$lib/components/DateRangePicker.svelte';
+	import UsageChart from '$lib/components/UsageChart.svelte';
+	import ToolBreakdownTable from '$lib/components/ToolBreakdownTable.svelte';
 
 	let { data } = $props();
 
 	let loading = $state(false);
+	let selectedTool: ToolName | null = $state(null);
+
+	let chartData = $derived(
+		selectedTool ? usage.data.filter((r) => r.tool === selectedTool) : usage.data
+	);
 
 	let range: TimeRange = $derived((data.range as TimeRange) ?? 'daily');
 	let since = $derived($page.url.searchParams.get('since') ?? '');
@@ -76,22 +83,18 @@
 			/>
 		</section>
 
-		<!-- Chart Area (Task 5 placeholder) -->
+		<!-- Chart Area -->
 		<section class="mt-8" aria-label="Usage chart">
-			<div class="rounded-xl border border-zinc-200/80 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-				<div class="flex h-64 items-center justify-center text-sm text-zinc-400 dark:text-zinc-500">
-					Chart will be rendered here
-				</div>
-			</div>
+			<UsageChart data={chartData} />
 		</section>
 
-		<!-- Table Area (Task 6 placeholder) -->
+		<!-- Tool Breakdown Table -->
 		<section class="mt-8 mb-12" aria-label="Usage breakdown table">
-			<div class="rounded-xl border border-zinc-200/80 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-				<div class="flex h-48 items-center justify-center text-sm text-zinc-400 dark:text-zinc-500">
-					Table will be rendered here
-				</div>
-			</div>
+			<ToolBreakdownTable
+				data={usage.data}
+				{selectedTool}
+				onfilter={(tool) => { selectedTool = tool; }}
+			/>
 		</section>
 	</main>
 </div>
