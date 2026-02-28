@@ -56,6 +56,19 @@ export function normalizeCodex(data: { daily: CodexDaily[] }): UsageRecord[] {
 	}));
 }
 
+export function normalizeOpenCode(data: { daily: CodexDaily[] }): UsageRecord[] {
+	return (data.daily ?? []).map((d) => ({
+		date: normalizeDate(d.date),
+		tool: 'opencode' as ToolName,
+		inputTokens: d.inputTokens,
+		outputTokens: d.outputTokens,
+		cacheTokens: d.cachedInputTokens ?? 0,
+		totalTokens: d.totalTokens,
+		cost: d.costUSD ?? 0,
+		models: Object.keys(d.models ?? {})
+	}));
+}
+
 export function normalizePi(data: unknown[]): UsageRecord[] {
 	return (data ?? []).map((d: any) => ({
 		date: d.date ?? '',

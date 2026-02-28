@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { ToolName, TimeRange, UsageRecord } from '$lib/types';
 import { runCcusage } from '$lib/server/ccusage';
-import { normalizeClaude, normalizeCodex, normalizePi } from '$lib/server/normalizer';
+import { normalizeClaude, normalizeCodex, normalizeOpenCode, normalizePi } from '$lib/server/normalizer';
 import { getCached, setCache } from '$lib/server/cache';
 
 const ALL_TOOLS: ToolName[] = ['claude', 'codex', 'opencode', 'amp', 'pi'];
@@ -28,6 +28,8 @@ export const GET: RequestHandler = async ({ url }) => {
 
 			if (tool === 'codex') {
 				records = normalizeCodex(raw as any);
+			} else if (tool === 'opencode') {
+				records = normalizeOpenCode(raw as any);
 			} else if (tool === 'pi') {
 				records = normalizePi(raw as any);
 			} else {

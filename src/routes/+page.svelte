@@ -21,6 +21,7 @@
 	let since = $derived($page.url.searchParams.get('since') ?? '');
 	let until = $derived($page.url.searchParams.get('until') ?? '');
 	let usage: UsageResponse = $derived(data.usage);
+	let error: string | null = $derived(data.error ?? null);
 
 	async function navigate(newRange: TimeRange, newSince: string, newUntil: string) {
 		loading = true;
@@ -73,6 +74,18 @@
 
 	<!-- Main Content -->
 	<main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+		<!-- Error Banner -->
+		{#if error}
+			<div class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900/50 dark:bg-red-950/30" role="alert">
+				<div class="flex items-center gap-2">
+					<svg class="h-4 w-4 shrink-0 text-red-500 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+					</svg>
+					<p class="text-sm font-medium text-red-800 dark:text-red-200">{error}</p>
+				</div>
+			</div>
+		{/if}
+
 		<!-- Summary Cards -->
 		<section aria-label="Summary statistics">
 			<SummaryCards
@@ -84,12 +97,20 @@
 		</section>
 
 		<!-- Chart Area -->
-		<section class="mt-8" aria-label="Usage chart">
+		<section
+			class="mt-8 transition-opacity duration-200"
+			class:opacity-40={loading}
+			aria-label="Usage chart"
+		>
 			<UsageChart data={chartData} />
 		</section>
 
 		<!-- Tool Breakdown Table -->
-		<section class="mt-8 mb-12" aria-label="Usage breakdown table">
+		<section
+			class="mt-8 mb-12 transition-opacity duration-200"
+			class:opacity-40={loading}
+			aria-label="Usage breakdown table"
+		>
 			<ToolBreakdownTable
 				data={usage.data}
 				{selectedTool}

@@ -3,6 +3,17 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="description" content="Track token usage and costs across AI coding tools like Claude Code, Codex, OpenCode, Amp, and Pi." />
+		<meta name="color-scheme" content="light dark" />
+		<script>
+			(function () {
+				const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+				if (prefersDark) document.documentElement.classList.add('dark');
+				window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
+					document.documentElement.classList.toggle('dark', e.matches);
+				});
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
