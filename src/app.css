@@ -1,1 +1,19 @@
 @import "tailwindcss";
+
+@layer base {
+	html {
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+
+	body {
+		@apply bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100;
+	}
+
+	/* Fix date input icons in dark mode */
+	@media (prefers-color-scheme: dark) {
+		input[type="date"]::-webkit-calendar-picker-indicator {
+			filter: invert(1);
+		}
+	}
+}
