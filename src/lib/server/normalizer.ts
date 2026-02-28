@@ -56,16 +56,16 @@ export function normalizeCodex(data: { daily: CodexDaily[] }): UsageRecord[] {
 	}));
 }
 
-export function normalizeOpenCode(data: { daily: CodexDaily[] }): UsageRecord[] {
+export function normalizeOpenCode(data: { daily: ClaudeDaily[] }): UsageRecord[] {
 	return (data.daily ?? []).map((d) => ({
 		date: normalizeDate(d.date),
 		tool: 'opencode' as ToolName,
 		inputTokens: d.inputTokens,
 		outputTokens: d.outputTokens,
-		cacheTokens: d.cachedInputTokens ?? 0,
+		cacheTokens: (d.cacheCreationTokens ?? 0) + (d.cacheReadTokens ?? 0),
 		totalTokens: d.totalTokens,
-		cost: d.costUSD ?? 0,
-		models: Object.keys(d.models ?? {})
+		cost: d.totalCost ?? 0,
+		models: d.modelsUsed ?? []
 	}));
 }
 

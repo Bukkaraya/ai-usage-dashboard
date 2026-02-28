@@ -20,8 +20,16 @@ export async function runCcusage(
 	const fullCmd = `${cmd} ${args.join(' ')}`;
 
 	try {
-		const { stdout } = await execAsync(fullCmd, { timeout: TIMEOUT_MS });
-		return JSON.parse(stdout);
+		const { stdout, stderr } = await execAsync(fullCmd, {
+			timeout: TIMEOUT_MS,
+			maxBuffer: 10 * 1024 * 1024
+		});
+		// Some tools (e.g. opencode) print info/warning lines to stdout before JSON.
+		// Find the actual JSON start: look for '{"' or '[{' or '[]' patterns.
+		const output = stdout || stderr;
+		const jsonMatch = output.match(/(\{[\s]*"|\[[\s]*[\[{]|\[\s*\])/);
+		if (!jsonMatch || jsonMatch.index === undefined) return null;
+		return JSON.parse(output.slice(jsonMatch.index));
 	} catch {
 		return null;
 	}
