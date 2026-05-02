@@ -14,8 +14,9 @@ export async function runCcusage(
 ): Promise<unknown> {
 	const cmd = TOOL_COMMANDS[tool];
 	const args = [subcommand, '--json'];
-	if (since) args.push('--since', since);
-	if (until) args.push('--until', until);
+	// ccusage expects YYYYMMDD format, not YYYY-MM-DD
+	if (since) args.push('--since', since.replace(/-/g, ''));
+	if (until) args.push('--until', until.replace(/-/g, ''));
 
 	const fullCmd = `${cmd} ${args.join(' ')}`;
 

@@ -1,4 +1,8 @@
+import { dev } from '$app/environment';
 import type { UsageResponse } from '$lib/types';
+
+const CLIENT_CACHE_TTL_MS = 60_000;
+const clientCache = new Map<string, { data: UsageResponse; timestamp: number }>();
 
 export async function load({ fetch, url }) {
 	const range = url.searchParams.get('range') ?? 'daily';
@@ -9,6 +13,12 @@ export async function load({ fetch, url }) {
 	if (since) params.set('since', since);
 	if (until) params.set('until', until);
 
+	const cacheKey = params.toString();
+	const cached = clientCache.get(cacheKey);
+	if (!dev && cached && Date.now() - cached.timestamp < CLIENT_CACHE_TTL_MS) {
+		return { usage: cached.data, range, error: null };
+	}
+
 	try {
 		const res = await fetch(`/api/usage?${params}`);
 		if (!res.ok) {
@@ -16,6 +26,9 @@ export async function load({ fetch, url }) {
 			return { usage: emptyResponse(), range, error: `Failed to fetch usage data (${res.status})` };
 		}
 		const usage: UsageResponse = await res.json();
+		if (!dev) {
+			clientCache.set(cacheKey, { data: usage, timestamp: Date.now() });
+		}
 		return { usage, range, error: null };
 	} catch (err) {
 		console.error('Failed to fetch usage data:', err);
@@ -24,5 +37,5 @@ export async function load({ fetch, url }) {
 }
 
 function emptyResponse(): UsageResponse {
-	return { data: [], totals: { totalCost: 0, totalTokens: 0 } };
+	return { data: [], models: [], totals: { totalCost: 0, totalTokens: 0 } };
 }

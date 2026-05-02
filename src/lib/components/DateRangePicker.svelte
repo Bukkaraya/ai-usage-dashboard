@@ -7,27 +7,25 @@
 
 	let { since, until, onchange }: Props = $props();
 
-	let localSince = $state(since);
-	let localUntil = $state(until);
+	// Track whether the user is actively editing (not yet applied)
+	let editingSince = $state<string | null>(null);
+	let editingUntil = $state<string | null>(null);
+
+	// Display value: use local edit if active, otherwise prop from URL
+	let displaySince = $derived(editingSince ?? since);
+	let displayUntil = $derived(editingUntil ?? until);
 
 	function handleApply() {
-		onchange(localSince, localUntil);
+		onchange(displaySince, displayUntil);
+		editingSince = null;
+		editingUntil = null;
 	}
 
 	function handleClear() {
-		localSince = '';
-		localUntil = '';
+		editingSince = null;
+		editingUntil = null;
 		onchange('', '');
 	}
-
-	// Keep local state in sync with props
-	$effect(() => {
-		localSince = since;
-	});
-
-	$effect(() => {
-		localUntil = until;
-	});
 </script>
 
 <div class="flex items-center gap-2">
@@ -36,7 +34,8 @@
 		<input
 			id="date-since"
 			type="date"
-			bind:value={localSince}
+			value={displaySince}
+			oninput={(e) => { editingSince = e.currentTarget.value; }}
 			class="rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-zinc-700 shadow-sm transition-colors
 				focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-300
 				dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:focus:border-zinc-500 dark:focus:ring-zinc-600"
@@ -47,7 +46,8 @@
 		<input
 			id="date-until"
 			type="date"
-			bind:value={localUntil}
+			value={displayUntil}
+			oninput={(e) => { editingUntil = e.currentTarget.value; }}
 			class="rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-zinc-700 shadow-sm transition-colors
 				focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-300
 				dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:focus:border-zinc-500 dark:focus:ring-zinc-600"

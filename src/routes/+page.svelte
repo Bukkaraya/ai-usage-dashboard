@@ -1,18 +1,22 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import type { TimeRange, ToolName, UsageResponse } from '$lib/types';
+	import type { ModelFilter, TimeRange, ToolName, UsageResponse } from '$lib/types';
 	import SummaryCards from '$lib/components/SummaryCards.svelte';
 	import TimeRangeToggle from '$lib/components/TimeRangeToggle.svelte';
 	import DateRangePicker from '$lib/components/DateRangePicker.svelte';
 	import UsageChart from '$lib/components/UsageChart.svelte';
 	import ToolBreakdownTable from '$lib/components/ToolBreakdownTable.svelte';
+	import ModelBreakdownTable from '$lib/components/ModelBreakdownTable.svelte';
+	import FixedBasketIndexPanel from '$lib/components/FixedBasketIndexPanel.svelte';
 
 	let { data } = $props();
 
 	let loading = $state(false);
 	let selectedTool: ToolName | null = $state(null);
+	let selectedModel: ModelFilter | null = $state(null);
 
+	let usage: UsageResponse = $derived(data.usage);
 	let chartData = $derived(
 		selectedTool ? usage.data.filter((r) => r.tool === selectedTool) : usage.data
 	);
@@ -20,7 +24,6 @@
 	let range: TimeRange = $derived((data.range as TimeRange) ?? 'daily');
 	let since = $derived($page.url.searchParams.get('since') ?? '');
 	let until = $derived($page.url.searchParams.get('until') ?? '');
-	let usage: UsageResponse = $derived(data.usage);
 	let error: string | null = $derived(data.error ?? null);
 
 	async function navigate(newRange: TimeRange, newSince: string, newUntil: string) {
@@ -39,6 +42,20 @@
 
 	function handleDateChange(newSince: string, newUntil: string) {
 		navigate(range, newSince, newUntil);
+	}
+
+	function handleToolFilter(tool: ToolName | null) {
+		selectedTool = tool;
+		if (tool === null || (selectedModel && selectedModel.tool !== tool)) {
+			selectedModel = null;
+		}
+	}
+
+	function handleModelFilter(model: ModelFilter | null) {
+		selectedModel = model;
+		if (model) {
+			selectedTool = model.tool;
+		}
 	}
 </script>
 
@@ -96,13 +113,27 @@
 			/>
 		</section>
 
+		<section
+			class="mt-8 transition-opacity duration-200"
+			class:opacity-40={loading}
+			aria-label="Fixed basket price index"
+		>
+			<FixedBasketIndexPanel
+				models={usage.models}
+				usage={usage.data}
+				{range}
+				{selectedTool}
+				{selectedModel}
+			/>
+		</section>
+
 		<!-- Chart Area -->
 		<section
 			class="mt-8 transition-opacity duration-200"
 			class:opacity-40={loading}
 			aria-label="Usage chart"
 		>
-			<UsageChart data={chartData} />
+			<UsageChart data={chartData} {range} />
 		</section>
 
 		<!-- Tool Breakdown Table -->
@@ -114,7 +145,20 @@
 			<ToolBreakdownTable
 				data={usage.data}
 				{selectedTool}
-				onfilter={(tool) => { selectedTool = tool; }}
+				onfilter={handleToolFilter}
+			/>
+		</section>
+
+		<section
+			class="mt-8 mb-12 transition-opacity duration-200"
+			class:opacity-40={loading}
+			aria-label="Model breakdown table"
+		>
+			<ModelBreakdownTable
+				data={usage.models}
+				{selectedTool}
+				{selectedModel}
+				onfilter={handleModelFilter}
 			/>
 		</section>
 	</main>

@@ -7,10 +7,19 @@ node_modules
 .wrangler
 /.svelte-kit
 /build
+/dist
+/coverage
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Env
 .env

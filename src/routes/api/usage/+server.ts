@@ -1,83 +1,111 @@
+import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import type { ToolName, TimeRange, UsageRecord } from '$lib/types';
-import { runCcusage } from '$lib/server/ccusage';
-import { normalizeClaude, normalizeCodex, normalizeOpenCode, normalizePi } from '$lib/server/normalizer';
 import { getCached, setCache } from '$lib/server/cache';
+import { getLocalUsageSnapshot } from '$lib/server/local-usage';
+import {
+	aggregateModelUsageForRange,
+	aggregateUsageForRange,
+	parseUsageMetrics,
+	type UsageSnapshot
+} from '$lib/server/prometheus';
+import type { TimeRange, ToolName, UsageResponse } from '$lib/types';
+import type { RequestHandler } from './$types';
 
-const ALL_TOOLS: ToolName[] = ['claude', 'codex', 'opencode', 'amp', 'pi'];
-
-export const GET: RequestHandler = async ({ url }) => {
-	const toolParam = (url.searchParams.get('tool') ?? 'all') as ToolName | 'all';
+export const GET: RequestHandler = async ({ url, fetch }) => {
+	const tool = (url.searchParams.get('tool') ?? 'all') as ToolName | 'all';
 	const range = (url.searchParams.get('range') ?? 'daily') as TimeRange;
 	const since = url.searchParams.get('since') ?? undefined;
 	const until = url.searchParams.get('until') ?? undefined;
 
-	const tools: ToolName[] = toolParam === 'all' ? ALL_TOOLS : [toolParam];
-	const subcommand = range === 'monthly' ? 'monthly' : 'daily';
+	const snapshots = await loadSnapshots(fetch, tool, since, until);
+	const usage = aggregateUsageForRange(snapshots.usage, range);
+	const models = aggregateModelUsageForRange(snapshots.models, range);
 
-	let allRecords: UsageRecord[] = [];
+	const filteredUsage = tool === 'all' ? usage : usage.filter((record) => record.tool === tool);
+	const filteredModels = tool === 'all' ? models : models.filter((record) => record.tool === tool);
+	const totalCost = filteredUsage.reduce((sum, record) => sum + record.cost, 0);
+	const totalTokens = filteredUsage.reduce((sum, record) => sum + record.totalTokens, 0);
 
-	for (const tool of tools) {
-		const cacheKey = `${tool}:${subcommand}:${since ?? ''}:${until ?? ''}`;
-		let records = getCached<UsageRecord[]>(cacheKey);
-
-		if (!records) {
-			const raw = await runCcusage(tool, subcommand, since, until);
-			if (!raw) continue;
-
-			if (tool === 'codex') {
-				records = normalizeCodex(raw as any);
-			} else if (tool === 'opencode') {
-				records = normalizeOpenCode(raw as any);
-			} else if (tool === 'pi') {
-				records = normalizePi(raw as any);
-			} else {
-				records = normalizeClaude(raw as any, tool);
-			}
-			setCache(cacheKey, records);
-		}
-
-		allRecords = allRecords.concat(records);
-	}
-
-	if (range === 'weekly') {
-		allRecords = aggregateWeekly(allRecords);
-	}
-
-	const totalCost = allRecords.reduce((s, r) => s + r.cost, 0);
-	const totalTokens = allRecords.reduce((s, r) => s + r.totalTokens, 0);
-
-	return json({
-		data: allRecords,
+	const response: UsageResponse = {
+		data: filteredUsage,
+		models: filteredModels,
 		totals: { totalCost, totalTokens }
+	};
+
+	return json(response, {
+		headers: {
+			'Cache-Control': 'public, max-age=60, stale-while-revalidate=300'
+		}
 	});
 };
 
-function aggregateWeekly(records: UsageRecord[]): UsageRecord[] {
-	const weekMap = new Map<string, UsageRecord>();
+async function loadSnapshots(
+	fetchImpl: typeof fetch,
+	tool: ToolName | 'all',
+	since?: string,
+	until?: string
+): Promise<UsageSnapshot> {
+	const targets = getScrapeTargets();
+	const includeLocal = shouldIncludeLocal();
+	let combined: UsageSnapshot = { usage: [], models: [] };
 
-	for (const r of records) {
-		const d = new Date(r.date);
-		const day = d.getDay();
-		const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-		const weekStart = new Date(d.setDate(diff));
-		const weekKey = `${weekStart.toISOString().slice(0, 10)}|${r.tool}`;
-
-		const existing = weekMap.get(weekKey);
-		if (existing) {
-			existing.inputTokens += r.inputTokens;
-			existing.outputTokens += r.outputTokens;
-			existing.cacheTokens += r.cacheTokens;
-			existing.totalTokens += r.totalTokens;
-			existing.cost += r.cost;
-			for (const m of r.models) {
-				if (!existing.models.includes(m)) existing.models.push(m);
-			}
-		} else {
-			weekMap.set(weekKey, { ...r, date: weekStart.toISOString().slice(0, 10) });
-		}
+	if (includeLocal || targets.length === 0) {
+		const local = await getLocalUsageSnapshot(tool, since, until);
+		combined = mergeSnapshots(combined, local);
 	}
 
-	return Array.from(weekMap.values());
+	for (const target of targets) {
+		const cacheKey = `remote-metrics:${target}:${tool}:${since ?? ''}:${until ?? ''}`;
+		let snapshot = getCached<UsageSnapshot>(cacheKey);
+
+		if (!snapshot) {
+			try {
+				const response = await fetchImpl(buildMetricsUrl(target, tool, since, until));
+				if (!response.ok) continue;
+				snapshot = parseUsageMetrics(await response.text());
+				setCache(cacheKey, snapshot);
+			} catch {
+				continue;
+			}
+		}
+
+		combined = mergeSnapshots(combined, snapshot);
+	}
+
+	return combined;
+}
+
+function mergeSnapshots(left: UsageSnapshot, right: UsageSnapshot): UsageSnapshot {
+	return {
+		usage: left.usage.concat(right.usage),
+		models: left.models.concat(right.models)
+	};
+}
+
+function getScrapeTargets(): string[] {
+	return (env.USAGE_SCRAPE_TARGETS ?? '')
+		.split(/[\n,]/)
+		.map((value) => value.trim())
+		.filter(Boolean);
+}
+
+function shouldIncludeLocal(): boolean {
+	return (env.USAGE_INCLUDE_LOCAL_METRICS ?? 'true').toLowerCase() !== 'false';
+}
+
+function buildMetricsUrl(
+	target: string,
+	tool: ToolName | 'all',
+	since?: string,
+	until?: string
+): string {
+	const base = target.endsWith('/metrics') ? new URL(target) : new URL('/metrics', withTrailingSlash(target));
+	if (tool !== 'all') base.searchParams.set('tool', tool);
+	if (since) base.searchParams.set('since', since);
+	if (until) base.searchParams.set('until', until);
+	return base.toString();
+}
+
+function withTrailingSlash(target: string): string {
+	return target.endsWith('/') ? target : `${target}/`;
 }

@@ -7,20 +7,23 @@
 		CategoryScale,
 		LinearScale,
 		Tooltip,
-		Legend
+		Legend,
+		type ChartConfiguration,
+		type TooltipItem
 	} from 'chart.js';
-	import type { UsageRecord, ToolName } from '$lib/types';
+	import type { UsageRecord, ToolName, TimeRange } from '$lib/types';
 	import { TOOL_COLORS } from '$lib/constants';
 
 	Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 	interface Props {
 		data: UsageRecord[];
+		range: TimeRange;
 	}
 
-	let { data }: Props = $props();
+	let { data, range }: Props = $props();
 
-	type ViewMode = 'cost' | 'tokens';
+	type ViewMode = 'cost' | 'tokens' | 'costPerMillion';
 	let viewMode: ViewMode = $state('cost');
 
 	let canvasEl: HTMLCanvasElement | undefined = $state();
@@ -48,10 +51,24 @@
 		return order.filter((t) => toolSet.has(t));
 	});
 
-	// Format a date string like "2025-02-21" to "Feb 21"
 	function formatDateLabel(dateStr: string): string {
 		const [year, month, day] = dateStr.split('-').map(Number);
 		const d = new Date(year, month - 1, day);
+
+		if (range === 'monthly') {
+			return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+		}
+
+		if (range === 'weekly') {
+			const end = new Date(d);
+			end.setDate(end.getDate() + 6);
+			const startLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+			const endLabel = end.getMonth() === d.getMonth()
+				? end.getDate().toString()
+				: end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+			return `${startLabel}–${endLabel}`;
+		}
+
 		return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 	}
 
@@ -85,13 +102,23 @@
 		return new Intl.NumberFormat('en-US').format(value);
 	}
 
+	function formatCostPerMillionTick(value: number): string {
+		if (value >= 100) return `$${Math.round(value)}`;
+		if (value >= 10) return `$${value.toFixed(1)}`;
+		return `$${value.toFixed(2)}`;
+	}
+
+	function formatCostPerMillionTooltip(value: number): string {
+		return `${formatCostTooltip(value)} / 1M`;
+	}
+
 	// Detect dark mode
 	function isDarkMode(): boolean {
 		if (typeof window === 'undefined') return false;
 		return window.matchMedia('(prefers-color-scheme: dark)').matches;
 	}
 
-	function buildChartConfig() {
+	function buildChartConfig(): ChartConfiguration<'bar', number[], string> {
 		const dark = isDarkMode();
 		const gridColor = dark ? 'rgba(161, 161, 170, 0.12)' : 'rgba(161, 161, 170, 0.2)';
 		const tickColor = dark ? 'rgba(161, 161, 170, 0.7)' : 'rgba(113, 113, 122, 0.8)';
@@ -100,26 +127,35 @@
 		const tooltipBodyColor = dark ? '#a1a1aa' : '#52525b';
 		const tooltipBorderColor = dark ? 'rgba(63, 63, 70, 0.6)' : 'rgba(228, 228, 231, 0.8)';
 
-		// Build a lookup: tool -> date -> value
-		const lookup = new Map<ToolName, Map<string, number>>();
+		const stacked = viewMode !== 'costPerMillion';
+		const lookup = new Map<ToolName, Map<string, { cost: number; totalTokens: number }>>();
 		for (const r of data) {
 			if (!lookup.has(r.tool)) lookup.set(r.tool, new Map());
 			const toolMap = lookup.get(r.tool)!;
-			const existing = toolMap.get(r.date) ?? 0;
-			toolMap.set(r.date, existing + (viewMode === 'cost' ? r.cost : r.totalTokens));
+			const existing = toolMap.get(r.date) ?? { cost: 0, totalTokens: 0 };
+			toolMap.set(r.date, {
+				cost: existing.cost + r.cost,
+				totalTokens: existing.totalTokens + r.totalTokens
+			});
 		}
 
 		const datasets = activeTools.map((tool) => {
 			const toolData = lookup.get(tool);
 			return {
 				label: TOOL_LABELS[tool],
-				data: dates.map((d) => toolData?.get(d) ?? 0),
+				data: dates.map((d) => {
+					const point = toolData?.get(d);
+					if (!point) return 0;
+					if (viewMode === 'cost') return point.cost;
+					if (viewMode === 'tokens') return point.totalTokens;
+					return point.totalTokens > 0 ? (point.cost / point.totalTokens) * 1_000_000 : 0;
+				}),
 				backgroundColor: TOOL_COLORS[tool],
 				hoverBackgroundColor: TOOL_COLORS[tool],
 				borderRadius: 3,
 				borderSkipped: false as const,
-				barPercentage: 0.7,
-				categoryPercentage: 0.8
+				barPercentage: stacked ? 0.7 : 0.82,
+				categoryPercentage: stacked ? 0.8 : 0.72
 			};
 		});
 
@@ -138,7 +174,7 @@
 				},
 				scales: {
 					x: {
-						stacked: true,
+						stacked,
 						grid: {
 							display: false
 						},
@@ -158,7 +194,7 @@
 						}
 					},
 					y: {
-						stacked: true,
+						stacked,
 						beginAtZero: true,
 						grid: {
 							color: gridColor,
@@ -173,7 +209,9 @@
 							},
 							callback: function (tickValue: string | number) {
 								const v = typeof tickValue === 'string' ? parseFloat(tickValue) : tickValue;
-								return viewMode === 'cost' ? formatCostTick(v) : formatTokenTick(v);
+								if (viewMode === 'cost') return formatCostTick(v);
+								if (viewMode === 'tokens') return formatTokenTick(v);
+								return formatCostPerMillionTick(v);
 							},
 							maxTicksLimit: 8
 						},
@@ -208,7 +246,6 @@
 						padding: 14,
 						boxPadding: 6,
 						usePointStyle: true,
-						pointStyle: 'rectRounded',
 						titleFont: {
 							family: "'DM Sans', system-ui, sans-serif",
 							size: 13,
@@ -223,18 +260,20 @@
 							title: function (items: { label: string }[]) {
 								return items[0]?.label ?? '';
 							},
-							label: function (context: { dataset: { label?: string }; parsed: { y: number } }) {
+							label: function (context: TooltipItem<'bar'>) {
 								const label = context.dataset.label ?? '';
-								const value = context.parsed.y;
+								const value = context.parsed.y ?? 0;
 								if (value === 0) return '';
-								const formatted =
-									viewMode === 'cost'
-										? formatCostTooltip(value)
-										: `${formatTokenTooltip(value)} tokens`;
+								const formatted = viewMode === 'cost'
+									? formatCostTooltip(value)
+									: viewMode === 'tokens'
+										? `${formatTokenTooltip(value)} tokens`
+										: formatCostPerMillionTooltip(value);
 								return ` ${label}: ${formatted}`;
 							},
-							footer: function (items: { parsed: { y: number } }[]) {
-								const total = items.reduce((sum, item) => sum + item.parsed.y, 0);
+							footer: function (items: TooltipItem<'bar'>[]) {
+								if (viewMode === 'costPerMillion') return '';
+								const total = items.reduce((sum, item) => sum + (item.parsed.y ?? 0), 0);
 								if (total === 0) return '';
 								const formatted =
 									viewMode === 'cost'
@@ -287,11 +326,12 @@
 		}
 	});
 
-	// Reactively update chart when data or viewMode changes
+	// Reactively update chart when data, viewMode, or range changes
 	$effect(() => {
 		// Access reactive dependencies
 		data;
 		viewMode;
+		range;
 		dates;
 		activeTools;
 
@@ -314,7 +354,11 @@
 				Usage Over Time
 			</h2>
 			<p class="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500">
-				{viewMode === 'cost' ? 'Daily spend by tool' : 'Token consumption by tool'}
+				{viewMode === 'cost'
+					? `${range === 'monthly' ? 'Monthly' : range === 'weekly' ? 'Weekly' : 'Daily'} spend by tool`
+					: viewMode === 'tokens'
+						? `${range === 'monthly' ? 'Monthly' : range === 'weekly' ? 'Weekly' : 'Daily'} token consumption by tool`
+						: `${range === 'monthly' ? 'Monthly' : range === 'weekly' ? 'Weekly' : 'Daily'} cost per 1M tokens by tool`}
 			</p>
 		</div>
 
@@ -345,6 +389,17 @@
 				onclick={() => (viewMode = 'tokens')}
 			>
 				Tokens
+			</button>
+			<button
+				role="radio"
+				aria-checked={viewMode === 'costPerMillion'}
+				class="rounded-md px-3 py-1.5 text-xs font-medium tracking-tight transition-all duration-200
+					{viewMode === 'costPerMillion'
+					? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
+					: 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}"
+				onclick={() => (viewMode = 'costPerMillion')}
+			>
+				Cost / 1M
 			</button>
 		</div>
 	</div>

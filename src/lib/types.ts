@@ -6,7 +6,22 @@ export interface UsageRecord {
 	cacheTokens: number;
 	totalTokens: number;
 	cost: number;
-	models: string[];
+}
+
+export interface ModelUsageRecord {
+	date: string;
+	tool: ToolName;
+	model: string;
+	inputTokens: number;
+	outputTokens: number;
+	cacheTokens: number;
+	totalTokens: number;
+	cost: number | null;
+}
+
+export interface ModelFilter {
+	tool: ToolName;
+	model: string;
 }
 
 export interface UsageTotals {
@@ -16,6 +31,7 @@ export interface UsageTotals {
 
 export interface UsageResponse {
 	data: UsageRecord[];
+	models: ModelUsageRecord[];
 	totals: UsageTotals;
 }
 
