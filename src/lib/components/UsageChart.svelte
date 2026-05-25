@@ -23,7 +23,7 @@
 
 	let { data, range }: Props = $props();
 
-	type ViewMode = 'cost' | 'tokens' | 'costPerMillion';
+	type ViewMode = 'cost' | 'tokens' | 'input' | 'output' | 'cacheRead' | 'cacheWrite' | 'costPerMillion';
 	let viewMode: ViewMode = $state('cost');
 
 	let canvasEl: HTMLCanvasElement | undefined = $state();
@@ -128,14 +128,32 @@
 		const tooltipBorderColor = dark ? 'rgba(63, 63, 70, 0.6)' : 'rgba(228, 228, 231, 0.8)';
 
 		const stacked = viewMode !== 'costPerMillion';
-		const lookup = new Map<ToolName, Map<string, { cost: number; totalTokens: number }>>();
+		const lookup = new Map<ToolName, Map<string, UsageRecord>>();
 		for (const r of data) {
 			if (!lookup.has(r.tool)) lookup.set(r.tool, new Map());
 			const toolMap = lookup.get(r.tool)!;
-			const existing = toolMap.get(r.date) ?? { cost: 0, totalTokens: 0 };
+			const existing =
+				toolMap.get(r.date) ??
+				{
+					date: r.date,
+					tool: r.tool,
+					inputTokens: 0,
+					outputTokens: 0,
+					cacheReadTokens: 0,
+					cacheWriteTokens: 0,
+					cacheTokens: 0,
+					totalTokens: 0,
+					cost: 0
+				};
 			toolMap.set(r.date, {
-				cost: existing.cost + r.cost,
-				totalTokens: existing.totalTokens + r.totalTokens
+				...existing,
+				inputTokens: existing.inputTokens + r.inputTokens,
+				outputTokens: existing.outputTokens + r.outputTokens,
+				cacheReadTokens: existing.cacheReadTokens + r.cacheReadTokens,
+				cacheWriteTokens: existing.cacheWriteTokens + r.cacheWriteTokens,
+				cacheTokens: existing.cacheTokens + r.cacheTokens,
+				totalTokens: existing.totalTokens + r.totalTokens,
+				cost: existing.cost + r.cost
 			});
 		}
 
@@ -148,6 +166,10 @@
 					if (!point) return 0;
 					if (viewMode === 'cost') return point.cost;
 					if (viewMode === 'tokens') return point.totalTokens;
+					if (viewMode === 'input') return point.inputTokens;
+					if (viewMode === 'output') return point.outputTokens;
+					if (viewMode === 'cacheRead') return point.cacheReadTokens;
+					if (viewMode === 'cacheWrite') return point.cacheWriteTokens;
 					return point.totalTokens > 0 ? (point.cost / point.totalTokens) * 1_000_000 : 0;
 				}),
 				backgroundColor: TOOL_COLORS[tool],
@@ -264,11 +286,12 @@
 								const label = context.dataset.label ?? '';
 								const value = context.parsed.y ?? 0;
 								if (value === 0) return '';
-								const formatted = viewMode === 'cost'
-									? formatCostTooltip(value)
-									: viewMode === 'tokens'
-										? `${formatTokenTooltip(value)} tokens`
-										: formatCostPerMillionTooltip(value);
+								const formatted =
+									viewMode === 'cost'
+										? formatCostTooltip(value)
+										: viewMode === 'costPerMillion'
+											? formatCostPerMillionTooltip(value)
+											: `${formatTokenTooltip(value)} tokens`;
 								return ` ${label}: ${formatted}`;
 							},
 							footer: function (items: TooltipItem<'bar'>[]) {
@@ -326,6 +349,20 @@
 		}
 	});
 
+	function viewModeDescription(): string {
+		const cadence = range === 'monthly' ? 'Monthly' : range === 'weekly' ? 'Weekly' : 'Daily';
+		const descriptions: Record<ViewMode, string> = {
+			cost: `${cadence} spend by tool`,
+			tokens: `${cadence} total token consumption by tool`,
+			input: `${cadence} input tokens by tool`,
+			output: `${cadence} output tokens by tool`,
+			cacheRead: `${cadence} cache read tokens by tool`,
+			cacheWrite: `${cadence} cache write tokens by tool`,
+			costPerMillion: `${cadence} cost per 1M tokens by tool`
+		};
+		return descriptions[viewMode];
+	}
+
 	// Reactively update chart when data, viewMode, or range changes
 	$effect(() => {
 		// Access reactive dependencies
@@ -354,17 +391,13 @@
 				Usage Over Time
 			</h2>
 			<p class="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500">
-				{viewMode === 'cost'
-					? `${range === 'monthly' ? 'Monthly' : range === 'weekly' ? 'Weekly' : 'Daily'} spend by tool`
-					: viewMode === 'tokens'
-						? `${range === 'monthly' ? 'Monthly' : range === 'weekly' ? 'Weekly' : 'Daily'} token consumption by tool`
-						: `${range === 'monthly' ? 'Monthly' : range === 'weekly' ? 'Weekly' : 'Daily'} cost per 1M tokens by tool`}
+				{viewModeDescription()}
 			</p>
 		</div>
 
 		<!-- Segmented Toggle -->
 		<div
-			class="inline-flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800"
+			class="inline-flex flex-wrap justify-end gap-0.5 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800"
 			role="radiogroup"
 			aria-label="Chart metric"
 		>
@@ -389,6 +422,50 @@
 				onclick={() => (viewMode = 'tokens')}
 			>
 				Tokens
+			</button>
+			<button
+				role="radio"
+				aria-checked={viewMode === 'input'}
+				class="rounded-md px-3 py-1.5 text-xs font-medium tracking-tight transition-all duration-200
+					{viewMode === 'input'
+					? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
+					: 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}"
+				onclick={() => (viewMode = 'input')}
+			>
+				Input
+			</button>
+			<button
+				role="radio"
+				aria-checked={viewMode === 'output'}
+				class="rounded-md px-3 py-1.5 text-xs font-medium tracking-tight transition-all duration-200
+					{viewMode === 'output'
+					? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
+					: 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}"
+				onclick={() => (viewMode = 'output')}
+			>
+				Output
+			</button>
+			<button
+				role="radio"
+				aria-checked={viewMode === 'cacheRead'}
+				class="rounded-md px-3 py-1.5 text-xs font-medium tracking-tight transition-all duration-200
+					{viewMode === 'cacheRead'
+					? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
+					: 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}"
+				onclick={() => (viewMode = 'cacheRead')}
+			>
+				Cache Read
+			</button>
+			<button
+				role="radio"
+				aria-checked={viewMode === 'cacheWrite'}
+				class="rounded-md px-3 py-1.5 text-xs font-medium tracking-tight transition-all duration-200
+					{viewMode === 'cacheWrite'
+					? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
+					: 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}"
+				onclick={() => (viewMode = 'cacheWrite')}
+			>
+				Cache Write
 			</button>
 			<button
 				role="radio"

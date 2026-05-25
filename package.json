@@ -13,11 +13,16 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {
+		"@ccusage/amp": "^18.0.11",
+		"@ccusage/codex": "^18.0.11",
+		"@ccusage/opencode": "^18.0.11",
+		"@ccusage/pi": "^18.0.11",
 		"@sveltejs/adapter-auto": "^7.0.0",
 		"@sveltejs/kit": "^2.50.2",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@tailwindcss/vite": "^4.2.1",
 		"@types/node": "^25.5.2",
+		"ccusage": "^18.0.11",
 		"svelte": "^5.51.0",
 		"svelte-check": "^4.3.6",
 		"tailwindcss": "^4.2.1",

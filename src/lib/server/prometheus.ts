@@ -16,6 +16,10 @@ export function serializeUsageMetrics(snapshot: UsageSnapshot, instance: string)
 		'# TYPE usage_dashboard_usage_output_tokens gauge',
 		'# HELP usage_dashboard_usage_cache_tokens Cache tokens per day and tool.',
 		'# TYPE usage_dashboard_usage_cache_tokens gauge',
+		'# HELP usage_dashboard_usage_cache_read_tokens Cache read tokens per day and tool.',
+		'# TYPE usage_dashboard_usage_cache_read_tokens gauge',
+		'# HELP usage_dashboard_usage_cache_write_tokens Cache write tokens per day and tool.',
+		'# TYPE usage_dashboard_usage_cache_write_tokens gauge',
 		'# HELP usage_dashboard_usage_total_tokens Total tokens per day and tool.',
 		'# TYPE usage_dashboard_usage_total_tokens gauge',
 		'# HELP usage_dashboard_usage_cost_usd Cost in USD per day and tool.',
@@ -26,6 +30,10 @@ export function serializeUsageMetrics(snapshot: UsageSnapshot, instance: string)
 		'# TYPE usage_dashboard_model_output_tokens gauge',
 		'# HELP usage_dashboard_model_cache_tokens Cache tokens per day, tool, and model.',
 		'# TYPE usage_dashboard_model_cache_tokens gauge',
+		'# HELP usage_dashboard_model_cache_read_tokens Cache read tokens per day, tool, and model.',
+		'# TYPE usage_dashboard_model_cache_read_tokens gauge',
+		'# HELP usage_dashboard_model_cache_write_tokens Cache write tokens per day, tool, and model.',
+		'# TYPE usage_dashboard_model_cache_write_tokens gauge',
 		'# HELP usage_dashboard_model_total_tokens Total tokens per day, tool, and model.',
 		'# TYPE usage_dashboard_model_total_tokens gauge',
 		'# HELP usage_dashboard_model_cost_usd Cost in USD per day, tool, and model when known.',
@@ -37,6 +45,8 @@ export function serializeUsageMetrics(snapshot: UsageSnapshot, instance: string)
 		lines.push(metricLine(`${METRIC_USAGE_PREFIX}_input_tokens`, labels, record.inputTokens));
 		lines.push(metricLine(`${METRIC_USAGE_PREFIX}_output_tokens`, labels, record.outputTokens));
 		lines.push(metricLine(`${METRIC_USAGE_PREFIX}_cache_tokens`, labels, record.cacheTokens));
+		lines.push(metricLine(`${METRIC_USAGE_PREFIX}_cache_read_tokens`, labels, record.cacheReadTokens));
+		lines.push(metricLine(`${METRIC_USAGE_PREFIX}_cache_write_tokens`, labels, record.cacheWriteTokens));
 		lines.push(metricLine(`${METRIC_USAGE_PREFIX}_total_tokens`, labels, record.totalTokens));
 		lines.push(metricLine(`${METRIC_USAGE_PREFIX}_cost_usd`, labels, record.cost));
 	}
@@ -51,6 +61,8 @@ export function serializeUsageMetrics(snapshot: UsageSnapshot, instance: string)
 		lines.push(metricLine(`${METRIC_MODEL_PREFIX}_input_tokens`, labels, record.inputTokens));
 		lines.push(metricLine(`${METRIC_MODEL_PREFIX}_output_tokens`, labels, record.outputTokens));
 		lines.push(metricLine(`${METRIC_MODEL_PREFIX}_cache_tokens`, labels, record.cacheTokens));
+		lines.push(metricLine(`${METRIC_MODEL_PREFIX}_cache_read_tokens`, labels, record.cacheReadTokens));
+		lines.push(metricLine(`${METRIC_MODEL_PREFIX}_cache_write_tokens`, labels, record.cacheWriteTokens));
 		lines.push(metricLine(`${METRIC_MODEL_PREFIX}_total_tokens`, labels, record.totalTokens));
 		if (record.cost !== null) {
 			lines.push(metricLine(`${METRIC_MODEL_PREFIX}_cost_usd`, labels, record.cost));
@@ -122,6 +134,8 @@ function mergeUsageRecords(records: UsageRecord[], range: TimeRange): UsageRecor
 		if (existing) {
 			existing.inputTokens += record.inputTokens;
 			existing.outputTokens += record.outputTokens;
+			existing.cacheReadTokens += record.cacheReadTokens;
+			existing.cacheWriteTokens += record.cacheWriteTokens;
 			existing.cacheTokens += record.cacheTokens;
 			existing.totalTokens += record.totalTokens;
 			existing.cost += record.cost;
@@ -144,6 +158,8 @@ function mergeModelRecords(records: ModelUsageRecord[], range: TimeRange): Model
 		if (existing) {
 			existing.inputTokens += record.inputTokens;
 			existing.outputTokens += record.outputTokens;
+			existing.cacheReadTokens += record.cacheReadTokens;
+			existing.cacheWriteTokens += record.cacheWriteTokens;
 			existing.cacheTokens += record.cacheTokens;
 			existing.totalTokens += record.totalTokens;
 			existing.cost =
@@ -223,6 +239,8 @@ function createEmptyUsageRecord(date: string, tool: ToolName): UsageRecord {
 		tool,
 		inputTokens: 0,
 		outputTokens: 0,
+		cacheReadTokens: 0,
+		cacheWriteTokens: 0,
 		cacheTokens: 0,
 		totalTokens: 0,
 		cost: 0
@@ -236,6 +254,8 @@ function createEmptyModelRecord(date: string, tool: ToolName, model: string): Mo
 		model,
 		inputTokens: 0,
 		outputTokens: 0,
+		cacheReadTokens: 0,
+		cacheWriteTokens: 0,
 		cacheTokens: 0,
 		totalTokens: 0,
 		cost: null
@@ -245,15 +265,35 @@ function createEmptyModelRecord(date: string, tool: ToolName, model: string): Mo
 function assignUsageMetric(record: UsageRecord, name: string, value: number): void {
 	if (name.endsWith('_input_tokens')) record.inputTokens = value;
 	if (name.endsWith('_output_tokens')) record.outputTokens = value;
-	if (name.endsWith('_cache_tokens')) record.cacheTokens = value;
+	if (name.endsWith('_cache_read_tokens')) record.cacheReadTokens = value;
+	if (name.endsWith('_cache_write_tokens')) record.cacheWriteTokens = value;
+	if (name.endsWith('_cache_tokens')) {
+		record.cacheTokens = value;
+		if (record.cacheReadTokens === 0 && record.cacheWriteTokens === 0) {
+			record.cacheReadTokens = value;
+		}
+	}
 	if (name.endsWith('_total_tokens')) record.totalTokens = value;
 	if (name.endsWith('_cost_usd')) record.cost = value;
+	if (record.cacheTokens === 0 && (record.cacheReadTokens > 0 || record.cacheWriteTokens > 0)) {
+		record.cacheTokens = record.cacheReadTokens + record.cacheWriteTokens;
+	}
 }
 
 function assignModelMetric(record: ModelUsageRecord, name: string, value: number): void {
 	if (name.endsWith('_input_tokens')) record.inputTokens = value;
 	if (name.endsWith('_output_tokens')) record.outputTokens = value;
-	if (name.endsWith('_cache_tokens')) record.cacheTokens = value;
+	if (name.endsWith('_cache_read_tokens')) record.cacheReadTokens = value;
+	if (name.endsWith('_cache_write_tokens')) record.cacheWriteTokens = value;
+	if (name.endsWith('_cache_tokens')) {
+		record.cacheTokens = value;
+		if (record.cacheReadTokens === 0 && record.cacheWriteTokens === 0) {
+			record.cacheReadTokens = value;
+		}
+	}
 	if (name.endsWith('_total_tokens')) record.totalTokens = value;
 	if (name.endsWith('_cost_usd')) record.cost = value;
+	if (record.cacheTokens === 0 && (record.cacheReadTokens > 0 || record.cacheWriteTokens > 0)) {
+		record.cacheTokens = record.cacheReadTokens + record.cacheWriteTokens;
+	}
 }

@@ -20,21 +20,43 @@
 
 	interface ToolAggregate {
 		tool: ToolName;
+		inputTokens: number;
+		outputTokens: number;
+		cacheReadTokens: number;
+		cacheWriteTokens: number;
 		totalTokens: number;
 		cost: number;
 		pctOfTotal: number;
 	}
 
 	let aggregated: ToolAggregate[] = $derived.by(() => {
-		const toolMap = new Map<ToolName, { totalTokens: number; cost: number }>();
+		const toolMap = new Map<
+			ToolName,
+			{
+				inputTokens: number;
+				outputTokens: number;
+				cacheReadTokens: number;
+				cacheWriteTokens: number;
+				totalTokens: number;
+				cost: number;
+			}
+		>();
 
 		for (const record of data) {
 			const existing = toolMap.get(record.tool);
 			if (existing) {
+				existing.inputTokens += record.inputTokens;
+				existing.outputTokens += record.outputTokens;
+				existing.cacheReadTokens += record.cacheReadTokens;
+				existing.cacheWriteTokens += record.cacheWriteTokens;
 				existing.totalTokens += record.totalTokens;
 				existing.cost += record.cost;
 			} else {
 				toolMap.set(record.tool, {
+					inputTokens: record.inputTokens,
+					outputTokens: record.outputTokens,
+					cacheReadTokens: record.cacheReadTokens,
+					cacheWriteTokens: record.cacheWriteTokens,
 					totalTokens: record.totalTokens,
 					cost: record.cost
 				});
@@ -47,6 +69,10 @@
 		for (const [tool, values] of toolMap) {
 			result.push({
 				tool,
+				inputTokens: values.inputTokens,
+				outputTokens: values.outputTokens,
+				cacheReadTokens: values.cacheReadTokens,
+				cacheWriteTokens: values.cacheWriteTokens,
 				totalTokens: values.totalTokens,
 				cost: values.cost,
 				pctOfTotal: grandTotalCost > 0 ? (values.cost / grandTotalCost) * 100 : 0
@@ -58,6 +84,10 @@
 	});
 
 	let grandTotalCost = $derived(aggregated.reduce((sum, row) => sum + row.cost, 0));
+	let grandInputTokens = $derived(aggregated.reduce((sum, row) => sum + row.inputTokens, 0));
+	let grandOutputTokens = $derived(aggregated.reduce((sum, row) => sum + row.outputTokens, 0));
+	let grandCacheReadTokens = $derived(aggregated.reduce((sum, row) => sum + row.cacheReadTokens, 0));
+	let grandCacheWriteTokens = $derived(aggregated.reduce((sum, row) => sum + row.cacheWriteTokens, 0));
 	let grandTotalTokens = $derived(aggregated.reduce((sum, row) => sum + row.totalTokens, 0));
 
 	function formatTokens(tokens: number): string {
@@ -110,14 +140,26 @@
 
 	<!-- Responsive wrapper -->
 	<div class="overflow-x-auto">
-		<table class="w-full min-w-[480px] text-sm">
+		<table class="w-full min-w-[880px] text-sm">
 			<thead>
 				<tr class="border-t border-b border-zinc-100 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-800/50">
 					<th class="px-6 py-2.5 text-left text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
 						Tool
 					</th>
 					<th class="px-6 py-2.5 text-right text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
-						Total Tokens
+						Input
+					</th>
+					<th class="px-6 py-2.5 text-right text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+						Output
+					</th>
+					<th class="px-6 py-2.5 text-right text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+						Cache Read
+					</th>
+					<th class="px-6 py-2.5 text-right text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+						Cache Write
+					</th>
+					<th class="px-6 py-2.5 text-right text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+						Total
 					</th>
 					<th class="px-6 py-2.5 text-right text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
 						Total Cost
@@ -154,7 +196,30 @@
 							</div>
 						</td>
 
-						<!-- Total tokens -->
+						<td class="px-6 py-3 text-right">
+							<span class="font-mono text-sm tabular-nums text-zinc-600 dark:text-zinc-400">
+								{formatTokens(row.inputTokens)}
+							</span>
+						</td>
+
+						<td class="px-6 py-3 text-right">
+							<span class="font-mono text-sm tabular-nums text-zinc-600 dark:text-zinc-400">
+								{formatTokens(row.outputTokens)}
+							</span>
+						</td>
+
+						<td class="px-6 py-3 text-right">
+							<span class="font-mono text-sm tabular-nums text-zinc-600 dark:text-zinc-400">
+								{formatTokens(row.cacheReadTokens)}
+							</span>
+						</td>
+
+						<td class="px-6 py-3 text-right">
+							<span class="font-mono text-sm tabular-nums text-zinc-600 dark:text-zinc-400">
+								{formatTokens(row.cacheWriteTokens)}
+							</span>
+						</td>
+
 						<td class="px-6 py-3 text-right">
 							<span class="font-mono text-sm tabular-nums text-zinc-600 dark:text-zinc-400">
 								{formatTokens(row.totalTokens)}
@@ -189,7 +254,7 @@
 				<!-- Empty state -->
 				{#if aggregated.length === 0}
 					<tr>
-						<td colspan="4" class="px-6 py-12 text-center text-zinc-400 dark:text-zinc-500">
+						<td colspan="8" class="px-6 py-12 text-center text-zinc-400 dark:text-zinc-500">
 							No usage data available
 						</td>
 					</tr>
@@ -203,6 +268,26 @@
 						<td class="px-6 py-3">
 							<span class="text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
 								Total
+							</span>
+						</td>
+						<td class="px-6 py-3 text-right">
+							<span class="font-mono text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+								{formatTokens(grandInputTokens)}
+							</span>
+						</td>
+						<td class="px-6 py-3 text-right">
+							<span class="font-mono text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+								{formatTokens(grandOutputTokens)}
+							</span>
+						</td>
+						<td class="px-6 py-3 text-right">
+							<span class="font-mono text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+								{formatTokens(grandCacheReadTokens)}
+							</span>
+						</td>
+						<td class="px-6 py-3 text-right">
+							<span class="font-mono text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+								{formatTokens(grandCacheWriteTokens)}
 							</span>
 						</td>
 						<td class="px-6 py-3 text-right">

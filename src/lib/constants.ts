@@ -9,11 +9,11 @@ export const TOOL_COLORS: Record<ToolName, string> = {
 };
 
 export const TOOL_COMMANDS: Record<ToolName, string> = {
-	claude: 'npx ccusage@latest',
-	codex: 'npx @ccusage/codex@latest',
-	opencode: 'npx @ccusage/opencode@latest',
-	amp: 'npx @ccusage/amp@latest',
-	pi: 'npx @ccusage/pi@latest'
+	claude: 'pnpm exec ccusage',
+	codex: 'pnpm exec ccusage-codex',
+	opencode: 'pnpm exec ccusage-opencode',
+	amp: 'pnpm exec ccusage-amp',
+	pi: 'pnpm exec pi'
 };
 
 export const CACHE_TTL_MS = 60_000;

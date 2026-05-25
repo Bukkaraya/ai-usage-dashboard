@@ -22,6 +22,10 @@
 	interface ModelAggregate {
 		tool: ToolName;
 		model: string;
+		inputTokens: number;
+		outputTokens: number;
+		cacheReadTokens: number;
+		cacheWriteTokens: number;
 		totalTokens: number;
 		activePeriods: number;
 	}
@@ -34,12 +38,20 @@
 			const key = `${record.tool}|${record.model}`;
 			const existing = map.get(key);
 			if (existing) {
+				existing.inputTokens += record.inputTokens;
+				existing.outputTokens += record.outputTokens;
+				existing.cacheReadTokens += record.cacheReadTokens;
+				existing.cacheWriteTokens += record.cacheWriteTokens;
 				existing.totalTokens += record.totalTokens;
 				existing.activePeriods += 1;
 			} else {
 				map.set(key, {
 					tool: record.tool,
 					model: record.model,
+					inputTokens: record.inputTokens,
+					outputTokens: record.outputTokens,
+					cacheReadTokens: record.cacheReadTokens,
+					cacheWriteTokens: record.cacheWriteTokens,
 					totalTokens: record.totalTokens,
 					activePeriods: 1
 				});
@@ -94,7 +106,7 @@
 	</div>
 
 	<div class="overflow-x-auto">
-		<table class="w-full min-w-[560px] text-sm">
+		<table class="w-full min-w-[920px] text-sm">
 			<thead>
 				<tr class="border-t border-b border-zinc-100 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-800/50">
 					<th class="px-6 py-2.5 text-left text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
@@ -104,7 +116,19 @@
 						Model
 					</th>
 					<th class="px-6 py-2.5 text-right text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
-						Total Tokens
+						Input
+					</th>
+					<th class="px-6 py-2.5 text-right text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+						Output
+					</th>
+					<th class="px-6 py-2.5 text-right text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+						Cache Read
+					</th>
+					<th class="px-6 py-2.5 text-right text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+						Cache Write
+					</th>
+					<th class="px-6 py-2.5 text-right text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+						Total
 					</th>
 					<th class="px-6 py-2.5 text-right text-xs font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
 						Active Periods
@@ -140,6 +164,26 @@
 							<span class="font-mono text-xs text-zinc-600 dark:text-zinc-400">{row.model}</span>
 						</td>
 						<td class="px-6 py-3 text-right">
+							<span class="font-mono text-sm tabular-nums text-zinc-600 dark:text-zinc-400">
+								{formatTokens(row.inputTokens)}
+							</span>
+						</td>
+						<td class="px-6 py-3 text-right">
+							<span class="font-mono text-sm tabular-nums text-zinc-600 dark:text-zinc-400">
+								{formatTokens(row.outputTokens)}
+							</span>
+						</td>
+						<td class="px-6 py-3 text-right">
+							<span class="font-mono text-sm tabular-nums text-zinc-600 dark:text-zinc-400">
+								{formatTokens(row.cacheReadTokens)}
+							</span>
+						</td>
+						<td class="px-6 py-3 text-right">
+							<span class="font-mono text-sm tabular-nums text-zinc-600 dark:text-zinc-400">
+								{formatTokens(row.cacheWriteTokens)}
+							</span>
+						</td>
+						<td class="px-6 py-3 text-right">
 							<span class="font-mono text-sm tabular-nums text-zinc-900 dark:text-zinc-100">
 								{formatTokens(row.totalTokens)}
 							</span>
@@ -154,7 +198,7 @@
 
 				{#if rows.length === 0}
 					<tr>
-						<td colspan="4" class="px-6 py-12 text-center text-zinc-400 dark:text-zinc-500">
+						<td colspan="8" class="px-6 py-12 text-center text-zinc-400 dark:text-zinc-500">
 							No model metrics available
 						</td>
 					</tr>

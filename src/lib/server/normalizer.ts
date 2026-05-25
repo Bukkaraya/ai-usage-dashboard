@@ -67,6 +67,8 @@ export function normalizeClaudeUsage(
 			tool,
 			inputTokens: d.inputTokens ?? 0,
 			outputTokens: d.outputTokens ?? 0,
+			cacheReadTokens: d.cacheReadTokens ?? 0,
+			cacheWriteTokens: d.cacheCreationTokens ?? 0,
 			cacheTokens: (d.cacheCreationTokens ?? 0) + (d.cacheReadTokens ?? 0),
 			totalTokens: d.totalTokens ?? 0,
 			cost: d.totalCost ?? 0
@@ -82,6 +84,8 @@ export function normalizeClaudeUsage(
 					model: model.modelName,
 					inputTokens: model.inputTokens ?? 0,
 					outputTokens: model.outputTokens ?? 0,
+					cacheReadTokens: model.cacheReadTokens ?? 0,
+					cacheWriteTokens: model.cacheCreationTokens ?? 0,
 					cacheTokens: (model.cacheCreationTokens ?? 0) + (model.cacheReadTokens ?? 0),
 					totalTokens:
 						(model.inputTokens ?? 0) +
@@ -100,6 +104,8 @@ export function normalizeClaudeUsage(
 					model: fallbackModel,
 					inputTokens: d.inputTokens ?? 0,
 					outputTokens: d.outputTokens ?? 0,
+					cacheReadTokens: d.cacheReadTokens ?? 0,
+					cacheWriteTokens: d.cacheCreationTokens ?? 0,
 					cacheTokens: (d.cacheCreationTokens ?? 0) + (d.cacheReadTokens ?? 0),
 					totalTokens: d.totalTokens ?? 0,
 					cost: d.totalCost ?? null
@@ -116,8 +122,10 @@ export function normalizeCodexUsage(data: { daily?: CodexDaily[]; monthly?: Code
 		usage: records.map((d) => ({
 			date: normalizeDate(d.date ?? ''),
 			tool: 'codex',
-			inputTokens: d.inputTokens ?? 0,
+			inputTokens: uncachedCodexInputTokens(d.inputTokens, d.cachedInputTokens),
 			outputTokens: d.outputTokens ?? 0,
+			cacheReadTokens: d.cachedInputTokens ?? 0,
+			cacheWriteTokens: 0,
 			cacheTokens: d.cachedInputTokens ?? 0,
 			totalTokens: d.totalTokens ?? 0,
 			cost: d.costUSD ?? 0
@@ -133,8 +141,13 @@ export function normalizeCodexUsage(data: { daily?: CodexDaily[]; monthly?: Code
 						date,
 						tool: 'codex' as ToolName,
 						model: modelName,
-						inputTokens: model.inputTokens ?? 0,
+						inputTokens: uncachedCodexInputTokens(
+							model.inputTokens,
+							model.cachedInputTokens
+						),
 						outputTokens: model.outputTokens ?? 0,
+						cacheReadTokens: model.cachedInputTokens ?? 0,
+						cacheWriteTokens: 0,
 						cacheTokens: model.cachedInputTokens ?? 0,
 						totalTokens: model.totalTokens ?? 0,
 						estimatedCost
@@ -154,8 +167,10 @@ export function normalizeCodexUsage(data: { daily?: CodexDaily[]; monthly?: Code
 					date,
 					tool: 'codex' as ToolName,
 					model: 'unknown',
-					inputTokens: d.inputTokens ?? 0,
+					inputTokens: uncachedCodexInputTokens(d.inputTokens, d.cachedInputTokens),
 					outputTokens: d.outputTokens ?? 0,
+					cacheReadTokens: d.cachedInputTokens ?? 0,
+					cacheWriteTokens: 0,
 					cacheTokens: d.cachedInputTokens ?? 0,
 					totalTokens: d.totalTokens ?? 0,
 					cost: null
@@ -167,11 +182,19 @@ export function normalizeCodexUsage(data: { daily?: CodexDaily[]; monthly?: Code
 
 function estimateCodexModelCost(modelName: string, model: CodexModelBreakdown): number {
 	const pricing = CODEX_MODEL_PRICING[modelName] ?? DEFAULT_CODEX_PRICING;
+	const uncachedInputTokens = uncachedCodexInputTokens(
+		model.inputTokens,
+		model.cachedInputTokens
+	);
 	return (
-		(model.inputTokens ?? 0) * pricing.input +
+		uncachedInputTokens * pricing.input +
 		(model.cachedInputTokens ?? 0) * pricing.cachedInput +
 		((model.outputTokens ?? 0) + (model.reasoningOutputTokens ?? 0)) * pricing.output
 	);
+}
+
+function uncachedCodexInputTokens(inputTokens = 0, cachedInputTokens = 0): number {
+	return Math.max(inputTokens - cachedInputTokens, 0);
 }
 
 export function normalizePiUsage(data: unknown[]): UsageSnapshot {
@@ -183,6 +206,8 @@ export function normalizePiUsage(data: unknown[]): UsageSnapshot {
 			tool: 'pi' as ToolName,
 			inputTokens: d.inputTokens ?? 0,
 			outputTokens: d.outputTokens ?? 0,
+			cacheReadTokens: 0,
+			cacheWriteTokens: 0,
 			cacheTokens: 0,
 			totalTokens: d.totalTokens ?? 0,
 			cost: d.totalCost ?? d.costUSD ?? 0
@@ -193,6 +218,8 @@ export function normalizePiUsage(data: unknown[]): UsageSnapshot {
 			model: chooseFallbackModel(d.modelsUsed),
 			inputTokens: d.inputTokens ?? 0,
 			outputTokens: d.outputTokens ?? 0,
+			cacheReadTokens: 0,
+			cacheWriteTokens: 0,
 			cacheTokens: 0,
 			totalTokens: d.totalTokens ?? 0,
 			cost: d.totalCost ?? d.costUSD ?? null

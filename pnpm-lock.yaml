@@ -15,6 +15,18 @@ importers:
         specifier: ^3.1.5
         version: 3.1.5(chart.js@4.5.1)(svelte@5.55.3)
     devDependencies:
+      '@ccusage/amp':
+        specifier: ^18.0.11
+        version: 18.0.11
+      '@ccusage/codex':
+        specifier: ^18.0.11
+        version: 18.0.11
+      '@ccusage/opencode':
+        specifier: ^18.0.11
+        version: 18.0.11
+      '@ccusage/pi':
+        specifier: ^18.0.11
+        version: 18.0.11
       '@sveltejs/adapter-auto':
         specifier: ^7.0.0
         version: 7.0.1(@sveltejs/kit@2.57.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.3)(vite@7.3.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)))(svelte@5.55.3)(typescript@5.9.3)(vite@7.3.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)))
@@ -30,6 +42,9 @@ importers:
       '@types/node':
         specifier: ^25.5.2
         version: 25.6.0
+      ccusage:
+        specifier: ^18.0.11
+        version: 18.0.11
       svelte:
         specifier: ^5.51.0
         version: 5.55.3
@@ -47,6 +62,26 @@ importers:
         version: 7.3.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)
 
 packages:
+
+  '@ccusage/amp@18.0.11':
+    resolution: {integrity: sha512-Xv6mscx0irnMA2oPSHx1v4J+ygFGHbBbqvtC+a5wknCqLQ55Qt6Px/17CjTH0oXhtxYjo+Aog3Vl8V0Tpug2Zw==}
+    engines: {node: '>=20.19.4'}
+    hasBin: true
+
+  '@ccusage/codex@18.0.11':
+    resolution: {integrity: sha512-/S0dyaO3yDegtGXTaMhu1ZyT3JbSuHsiUiIu9uP6UmqIAtSd9DOko1qkM6K1roePbF/rlk596GDHW1f0664D3A==}
+    engines: {node: '>=20.19.4'}
+    hasBin: true
+
+  '@ccusage/opencode@18.0.11':
+    resolution: {integrity: sha512-tbyA+RX7+KT9EvT+W5NP+MavN4WNniJVqutOItIMxavzZgW7djVNkFnoT7DXtRq3LYOOnLOUhUFyBJxZjCAKqQ==}
+    engines: {node: '>=20.19.4'}
+    hasBin: true
+
+  '@ccusage/pi@18.0.11':
+    resolution: {integrity: sha512-hcOrYegnrwFV2FNBRxW4MCnMQqd/wLlKC6ggCnQhtu5djpGByU90vDNYl30BG8TA5eKB0f4UHH2Szl5uTXAXOQ==}
+    engines: {node: '>=20.19.4'}
+    hasBin: true
 
   '@esbuild/aix-ppc64@0.27.7':
     resolution: {integrity: sha512-EKX3Qwmhz1eMdEJokhALr0YiD0lhQNwDqkPYyPhiSwKrh7/4KRjQc04sZ8db+5DVVnZ1LmbNDI1uAMPEUBnQPg==}
@@ -527,6 +562,11 @@ packages:
     resolution: {integrity: sha512-qIj0G9wZbMGNLjLmg1PT6v2mE9AH2zlnADJD/2tC6E00hgmhUOfEB6greHPAfLRSufHqROIUTkw6E+M3lH0PTQ==}
     engines: {node: '>= 0.4'}
 
+  ccusage@18.0.11:
+    resolution: {integrity: sha512-QIFCY2gh06vjWelND1gDwJxrniAcNkPw0OHUhz985iE7FIEf738YVzxUKQMKhA2fO9CIJCz0dSpnyIufaKdjdA==}
+    engines: {node: '>=20.19.4'}
+    hasBin: true
+
   chart.js@4.5.1:
     resolution: {integrity: sha512-GIjfiT9dbmHRiYi6Nl2yFCq7kkwdkp1W/lp2J99rX0yo9tgJGn3lKQATztIjb5tVtevcBtIdICNWqlq5+E8/Pw==}
     engines: {pnpm: '>=8'}
@@ -826,6 +866,14 @@ packages:
     resolution: {integrity: sha512-B58NGBEoc8Y9MWWCQGl/gq9xBCe4IiKM0a2x7GZdQKOW5Exr8S1W24J6OgM1njK8xCRGvAJIL/MxXHf6SkmQKQ==}
 
 snapshots:
+
+  '@ccusage/amp@18.0.11': {}
+
+  '@ccusage/codex@18.0.11': {}
+
+  '@ccusage/opencode@18.0.11': {}
+
+  '@ccusage/pi@18.0.11': {}
 
   '@esbuild/aix-ppc64@0.27.7':
     optional: true
@@ -1133,6 +1181,8 @@ snapshots:
   aria-query@5.3.1: {}
 
   axobject-query@4.1.0: {}
+
+  ccusage@18.0.11: {}
 
   chart.js@4.5.1:
     dependencies:

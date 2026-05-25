@@ -3,6 +3,8 @@ export interface UsageRecord {
 	tool: ToolName;
 	inputTokens: number;
 	outputTokens: number;
+	cacheReadTokens: number;
+	cacheWriteTokens: number;
 	cacheTokens: number;
 	totalTokens: number;
 	cost: number;
@@ -14,6 +16,8 @@ export interface ModelUsageRecord {
 	model: string;
 	inputTokens: number;
 	outputTokens: number;
+	cacheReadTokens: number;
+	cacheWriteTokens: number;
 	cacheTokens: number;
 	totalTokens: number;
 	cost: number | null;

@@ -79,6 +79,8 @@ export async function queryOpenCodeUsage(
 				model,
 				inputTokens: row.input_tokens,
 				outputTokens: row.output_tokens,
+				cacheReadTokens: row.cache_read,
+				cacheWriteTokens: row.cache_write,
 				cacheTokens: row.cache_read + row.cache_write,
 				totalTokens,
 				cost
@@ -89,6 +91,8 @@ export async function queryOpenCodeUsage(
 			if (existing) {
 				existing.inputTokens += row.input_tokens;
 				existing.outputTokens += row.output_tokens;
+				existing.cacheReadTokens += row.cache_read;
+				existing.cacheWriteTokens += row.cache_write;
 				existing.cacheTokens += row.cache_read + row.cache_write;
 				existing.totalTokens += totalTokens;
 				existing.cost += cost;
@@ -98,6 +102,8 @@ export async function queryOpenCodeUsage(
 					tool: 'opencode',
 					inputTokens: row.input_tokens,
 					outputTokens: row.output_tokens,
+					cacheReadTokens: row.cache_read,
+					cacheWriteTokens: row.cache_write,
 					cacheTokens: row.cache_read + row.cache_write,
 					totalTokens,
 					cost
