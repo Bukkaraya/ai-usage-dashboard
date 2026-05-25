@@ -1,8 +1,8 @@
 import type { ToolName } from './types';
 
 export const TOOL_COLORS: Record<ToolName, string> = {
-	claude: '#6366f1',
-	codex: '#22c55e',
+	claude: '#d97706',
+	codex: '#0ea5e9',
 	opencode: '#f97316',
 	amp: '#ec4899',
 	pi: '#8b5cf6'
