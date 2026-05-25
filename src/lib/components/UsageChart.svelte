@@ -363,6 +363,26 @@
 		return descriptions[viewMode];
 	}
 
+	const VIEW_MODE_LABELS: Record<ViewMode, string> = {
+		cost: 'Cost ($)',
+		tokens: 'Tokens',
+		input: 'Input',
+		output: 'Output',
+		cacheRead: 'Cache Read',
+		cacheWrite: 'Cache Write',
+		costPerMillion: 'Cost / 1M'
+	};
+
+	const VIEW_MODE_OPTIONS: ViewMode[] = [
+		'cost',
+		'tokens',
+		'input',
+		'output',
+		'cacheRead',
+		'cacheWrite',
+		'costPerMillion'
+	];
+
 	// Reactively update chart when data, viewMode, or range changes
 	$effect(() => {
 		// Access reactive dependencies
@@ -395,89 +415,27 @@
 			</p>
 		</div>
 
-		<!-- Segmented Toggle -->
-		<div
-			class="inline-flex flex-wrap justify-end gap-0.5 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800"
-			role="radiogroup"
-			aria-label="Chart metric"
-		>
-			<button
-				role="radio"
-				aria-checked={viewMode === 'cost'}
-				class="rounded-md px-3 py-1.5 text-xs font-medium tracking-tight transition-all duration-200
-					{viewMode === 'cost'
-					? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
-					: 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}"
-				onclick={() => (viewMode = 'cost')}
+		<div class="relative">
+			<label class="sr-only" for="chart-metric">Chart metric</label>
+			<select
+				id="chart-metric"
+				aria-label="Chart metric"
+				bind:value={viewMode}
+				class="h-9 min-w-40 appearance-none rounded-lg border border-zinc-200 bg-white py-1.5 pr-9 pl-3 text-sm font-medium text-zinc-900 shadow-sm transition-colors hover:border-zinc-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-zinc-600"
 			>
-				Cost ($)
-			</button>
-			<button
-				role="radio"
-				aria-checked={viewMode === 'tokens'}
-				class="rounded-md px-3 py-1.5 text-xs font-medium tracking-tight transition-all duration-200
-					{viewMode === 'tokens'
-					? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
-					: 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}"
-				onclick={() => (viewMode = 'tokens')}
+				{#each VIEW_MODE_OPTIONS as option}
+					<option value={option}>{VIEW_MODE_LABELS[option]}</option>
+				{/each}
+			</select>
+			<svg
+				class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-zinc-400"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke-width="2"
+				stroke="currentColor"
 			>
-				Tokens
-			</button>
-			<button
-				role="radio"
-				aria-checked={viewMode === 'input'}
-				class="rounded-md px-3 py-1.5 text-xs font-medium tracking-tight transition-all duration-200
-					{viewMode === 'input'
-					? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
-					: 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}"
-				onclick={() => (viewMode = 'input')}
-			>
-				Input
-			</button>
-			<button
-				role="radio"
-				aria-checked={viewMode === 'output'}
-				class="rounded-md px-3 py-1.5 text-xs font-medium tracking-tight transition-all duration-200
-					{viewMode === 'output'
-					? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
-					: 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}"
-				onclick={() => (viewMode = 'output')}
-			>
-				Output
-			</button>
-			<button
-				role="radio"
-				aria-checked={viewMode === 'cacheRead'}
-				class="rounded-md px-3 py-1.5 text-xs font-medium tracking-tight transition-all duration-200
-					{viewMode === 'cacheRead'
-					? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
-					: 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}"
-				onclick={() => (viewMode = 'cacheRead')}
-			>
-				Cache Read
-			</button>
-			<button
-				role="radio"
-				aria-checked={viewMode === 'cacheWrite'}
-				class="rounded-md px-3 py-1.5 text-xs font-medium tracking-tight transition-all duration-200
-					{viewMode === 'cacheWrite'
-					? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
-					: 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}"
-				onclick={() => (viewMode = 'cacheWrite')}
-			>
-				Cache Write
-			</button>
-			<button
-				role="radio"
-				aria-checked={viewMode === 'costPerMillion'}
-				class="rounded-md px-3 py-1.5 text-xs font-medium tracking-tight transition-all duration-200
-					{viewMode === 'costPerMillion'
-					? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
-					: 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}"
-				onclick={() => (viewMode = 'costPerMillion')}
-			>
-				Cost / 1M
-			</button>
+				<path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+			</svg>
 		</div>
 	</div>
 
